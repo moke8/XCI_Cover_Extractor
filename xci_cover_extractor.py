@@ -923,6 +923,14 @@ class App(tk.Tk):
         frm.rowconfigure(12, weight=1)
         frm.columnconfigure(1, weight=1)
 
+        # 作者信息
+        author_frm = ttk.Frame(frm)
+        author_frm.grid(row=13, column=0, columnspan=3, sticky='e', padx=8, pady=(4, 0))
+        ttk.Label(author_frm, text="by mokevip | QQ 652831080 | ", foreground='gray').pack(side='left')
+        link = ttk.Label(author_frm, text="GitHub", foreground='#4a9eff', cursor='hand2')
+        link.pack(side='left')
+        link.bind('<Button-1>', lambda e: __import__('webbrowser').open('https://github.com/moke8/XCI_Cover_Extractor'))
+
     def _pick_dir(self):
         p = filedialog.askdirectory(title="选择 XCI 文件所在目录")
         if p:

@@ -73,3 +73,7 @@ pyinstaller --onefile --windowed --name XCI_Cover_Extractor xci_cover_extractor.
 ## License
 
 MIT
+
+## 作者
+
+mokevip | QQ 652831080 | [GitHub](https://github.com/moke8/XCI_Cover_Extractor)
