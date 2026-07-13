@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.spec
+
+# PyInstaller
+*.manifest
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Project specific
+*.keys
+*.xci
+*.XCI
+images/
+gamelist.xml
+metadata.pegasus.txt
+metadata.pegasus.txt.bak*
+xci_extractor_config.json
