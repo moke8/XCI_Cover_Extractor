@@ -35,3 +35,5 @@ metadata.pegasus.txt.bak*
 xci_extractor_config.json
 config.json
 *_config.json
+
+.agents

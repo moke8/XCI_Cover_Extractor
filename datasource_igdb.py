@@ -4,7 +4,7 @@
 import json
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode
-from datasource import DataSource, register_datasource
+from datasource_base import DataSource, register_datasource
 
 TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 IGDB_BASE = "https://api.igdb.com/v4"
@@ -12,6 +12,13 @@ IGDB_BASE = "https://api.igdb.com/v4"
 PLATFORM_MAP = {
     "Nintendo Switch": 130,
     "Nintendo DS": 20,
+    "Nintendo 3DS": 37,
+    "Nintendo Wii": 5,
+    "PlayStation Portable": 38,
+    "PlayStation 1": 7,
+    "Nintendo GameCube": 21,
+    "Sega Dreamcast": 23,
+    "Game Boy Advance": 24,
 }
 
 
@@ -92,6 +99,9 @@ def fetch_igdb_metadata(title, client_id, token, platform_name=""):
 
     game = data[0]
     result = {}
+
+    if game.get("id"):
+        result["game_id"] = str(game["id"])
 
     if game.get("summary"):
         result["description"] = game["summary"]

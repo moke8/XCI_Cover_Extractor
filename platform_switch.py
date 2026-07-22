@@ -3,24 +3,11 @@
 
 import struct
 import locale
-import threading
 from pathlib import Path
 
 from Crypto.Cipher import AES
 
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QCheckBox, QTextEdit, QScrollArea, QFrame, QFileDialog, QMessageBox,
-)
-from PySide6.QtCore import Qt, Signal, QThread
-
-from game_cover_extractor import (
-    FlowLayout, GameCard, GameDetailDialog,
-    load_showcase_games, sanitize_filename, collect_game_files,
-    write_pegasus_meta, write_gamelist_xml,
-    _has_cjk, _is_traditional,
-)
-from datasource import set_proxy, google_translate, get_datasource
+from scrape import _has_cjk, _is_traditional
 
 PLATFORM_TITLE = "Nintendo Switch"
 CONFIG_FILENAME = "switch_config.json"
@@ -146,7 +133,8 @@ def parse_nca_header(decrypted_header):
             fs_header_off = 0x400 + i * 0x200
             section_ctr = b'\x00' * 8
             if fs_header_off + 0x148 <= len(decrypted_header):
-                section_ctr = decrypted_header[fs_header_off + 0x140:fs_header_off + 0x148]
+                section_ctr = decrypted_header[
+                    fs_header_off + 0x140:fs_header_off + 0x148]
             sections.append({
                 'index': i,
                 'start': start * 0x200,
@@ -161,13 +149,16 @@ def parse_nca_header(decrypted_header):
         if fs_off + 0x90 <= len(decrypted_header):
             ivfc_magic = decrypted_header[fs_off + 0x08:fs_off + 0x0C]
             if ivfc_magic == b'IVFC':
-                num_levels = struct.unpack_from('<I', decrypted_header, fs_off + 0x08 + 0x0C)[0]
+                num_levels = struct.unpack_from(
+                    '<I', decrypted_header, fs_off + 0x08 + 0x0C)[0]
                 for lvl in range(num_levels - 1, -1, -1):
                     level_off = fs_off + 0x08 + 0x10 + lvl * 0x18
                     if level_off + 16 > len(decrypted_header):
                         continue
-                    lv_offset = struct.unpack_from('<Q', decrypted_header, level_off)[0]
-                    lv_size = struct.unpack_from('<Q', decrypted_header, level_off + 8)[0]
+                    lv_offset = struct.unpack_from(
+                        '<Q', decrypted_header, level_off)[0]
+                    lv_size = struct.unpack_from(
+                        '<Q', decrypted_header, level_off + 8)[0]
                     if lv_size > 0:
                         romfs_offset_in_section = lv_offset
                         break
@@ -184,7 +175,8 @@ def parse_nca_header(decrypted_header):
 def get_section_decrypt_key(nca_info, keys):
     key_gen = nca_info['key_gen']
     key_index = nca_info['key_index']
-    key_names = ['key_area_key_application', 'key_area_key_ocean', 'key_area_key_system']
+    key_names = ['key_area_key_application', 'key_area_key_ocean',
+                 'key_area_key_system']
     if key_index >= len(key_names):
         key_index = 0
     kak_name = f"{key_names[key_index]}_{key_gen:02x}"
@@ -196,7 +188,8 @@ def get_section_decrypt_key(nca_info, keys):
     return cipher.decrypt(encrypted_key)
 
 
-def decrypt_section_ctr(f, nca_offset, section, key, offset_in_section=0, size=None):
+def decrypt_section_ctr(f, nca_offset, section, key,
+                        offset_in_section=0, size=None):
     section_offset = nca_offset + section['start']
     read_size = size if size else (section['size'] - offset_in_section)
     f.seek(section_offset + offset_in_section)
@@ -219,7 +212,8 @@ def parse_romfs(data):
         file_offset = struct.unpack_from('<Q', data, pos + 8)[0]
         file_size = struct.unpack_from('<Q', data, pos + 16)[0]
         name_len = struct.unpack_from('<I', data, pos + 28)[0]
-        name = data[pos + 32:pos + 32 + name_len].decode('utf-8', errors='ignore')
+        name = data[pos + 32:pos + 32 + name_len].decode(
+            'utf-8', errors='ignore')
         files[name] = (data_off + file_offset, file_size)
         entry_size = (32 + name_len + 3) & ~3
         pos += entry_size
@@ -256,9 +250,11 @@ def parse_nacp(nacp_data, lang_code='en'):
         t = nacp_data[base:base + 0x200]
         p = nacp_data[base + 0x200:base + 0x300]
         null_t = t.find(b'\x00')
-        title = t[:null_t].decode('utf-8', errors='ignore').strip() if null_t > 0 else ''
+        title = t[:null_t].decode('utf-8', errors='ignore').strip() \
+            if null_t > 0 else ''
         null_p = p.find(b'\x00')
-        pub = p[:null_p].decode('utf-8', errors='ignore').strip() if null_p > 0 else ''
+        pub = p[:null_p].decode('utf-8', errors='ignore').strip() \
+            if null_p > 0 else ''
         titles.append(title)
         publishers.append(pub)
 
@@ -304,7 +300,7 @@ def parse_nacp(nacp_data, lang_code='en'):
 
 # ===== XCI 提取 =====
 
-def extract_xci_info(xci_path, keys, lang_code='en', log=print):
+def extract_xci_info(xci_path, lang_code='en', log=print, *, keys=None):
     with open(xci_path, 'rb') as f:
         f.seek(0x100)
         if f.read(4) != b'HEAD':
@@ -362,7 +358,8 @@ def extract_xci_info(xci_path, keys, lang_code='en', log=print):
         nca_offset = control_nca_entry['abs_offset']
         romfs_off = control_nca_info.get('romfs_offset', 0)
         max_read = min(section['size'] - romfs_off, 0x800000)
-        decrypted = decrypt_section_ctr(f, nca_offset, section, section_key, romfs_off, max_read)
+        decrypted = decrypt_section_ctr(
+            f, nca_offset, section, section_key, romfs_off, max_read)
 
         romfs_data = decrypted
         if len(romfs_data) > 8:
@@ -408,370 +405,4 @@ def extract_xci_info(xci_path, keys, lang_code='en', log=print):
             'publisher': meta.get('publisher'),
             'filename': Path(xci_path).name,
             'icon_data': icon_data,
-        }
-
-
-# ===== 批量处理 =====
-
-def batch_extract(xci_dir, keys_path, generate_meta=False, generate_gamelist=False,
-                  online_mode=False, api_key=None, datasource_name='thegamesdb',
-                  lang_code='en', google_lang='',
-                  translate=False, video=False, thread_count=4,
-                  log=print, cancel_event=None):
-    import shutil
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    keys = parse_keys(keys_path)
-    game_files, temp_dir = collect_game_files(xci_dir, ('xci',))
-
-    if not game_files:
-        log("[错误] 所选目录中没有找到 XCI 文件")
-        return
-
-    output_dir = Path(xci_dir) / 'images'
-    output_dir.mkdir(exist_ok=True)
-
-    source = get_datasource(datasource_name)
-    if source and online_mode and api_key:
-        source.initialize(api_key, log)
-
-    total = len(game_files)
-    counter = [0]
-    lock = threading.Lock()
-    success = [0]
-    failed = [0]
-    meta_results = []
-
-    def process_game(xci_path, display_name):
-        if cancel_event and cancel_event.is_set():
-            return None
-        with lock:
-            counter[0] += 1
-            idx = counter[0]
-        log(f"[{idx}/{total}] {display_name}")
-        try:
-            info = extract_xci_info(str(xci_path), keys, lang_code, log)
-            if not info:
-                return None
-            info['filename'] = display_name
-            safe_title = sanitize_filename(info['title'])
-            img_name = f"{safe_title}.jpg"
-            out_path = output_dir / img_name
-            with open(out_path, 'wb') as out_f:
-                out_f.write(info['icon_data'])
-            log(f"  [OK] -> images/{img_name}")
-
-            if online_mode and source:
-                search_name = info.get('title_en') or info['title']
-                online = source.fetch_metadata(
-                    search_name, TGDB_PLATFORM_ID,
-                    platform_name=PLATFORM_TITLE)
-                if not online:
-                    wiki = get_datasource('wikipedia')
-                    if wiki:
-                        online = wiki.fetch_metadata(
-                            search_name,
-                            platform_name=PLATFORM_TITLE)
-                if online:
-                    if translate and google_lang:
-                        for k in ('description', 'genres'):
-                            if online.get(k):
-                                online[k] = google_translate(
-                                    online[k], google_lang)
-                    if video:
-                        if not online.get('youtube'):
-                            log(f"  [视频] 未找到视频: {display_name}")
-                    else:
-                        online.pop('youtube', None)
-                    info.update(online)
-                    log(f"  [在线] 已补全元数据")
-                else:
-                    log(f"  [在线] 未找到匹配")
-
-            if translate and google_lang and google_lang.startswith('zh'):
-                if not _has_cjk(info['title']):
-                    translated = google_translate(info['title'], google_lang)
-                    if translated and translated != info['title']:
-                        info['title'] = translated
-
-            return (info, img_name)
-        except Exception as e:
-            log(f"  [失败] {e}")
-            return None
-
-    try:
-        with ThreadPoolExecutor(max_workers=thread_count) as executor:
-            futures = {executor.submit(process_game, p, n): n
-                       for p, n in game_files}
-            for fut in as_completed(futures):
-                if cancel_event and cancel_event.is_set():
-                    log("\n[取消] 用户已取消操作")
-                    break
-                try:
-                    result = fut.result()
-                except Exception:
-                    result = None
-                if result:
-                    meta_results.append(result)
-                    success[0] += 1
-                else:
-                    failed[0] += 1
-    finally:
-        if temp_dir:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-
-    if generate_meta and meta_results:
-        meta_path = Path(xci_dir) / 'metadata.pegasus.txt'
-        write_pegasus_meta(meta_path, meta_results, COLLECTION_DEFAULTS)
-        log(f"\nPegasus 元数据已写入: {meta_path}")
-
-    if generate_gamelist and meta_results:
-        gl_path = Path(xci_dir) / 'gamelist.xml'
-        write_gamelist_xml(gl_path, meta_results)
-        log(f"Anbernic gamelist 已写入: {gl_path}")
-
-    log(f"\n处理完成! 成功: {success[0]}, 失败: {failed[0]}")
-    log(f"输出目录: {output_dir}")
-
-
-# ===== 工作线程 =====
-
-class ExtractWorker(QThread):
-    log_signal = Signal(str)
-    finished_signal = Signal()
-
-    def __init__(self, params):
-        super().__init__()
-        self.params = params
-        self.cancel_event = threading.Event()
-
-    def cancel(self):
-        self.cancel_event.set()
-
-    def run(self):
-        try:
-            batch_extract(**self.params, log=self.log_signal.emit,
-                          cancel_event=self.cancel_event)
-        except Exception as e:
-            self.log_signal.emit(f"\n[错误] {e}")
-        finally:
-            self.finished_signal.emit()
-
-
-# ===== 平台 Tab =====
-
-class PlatformTab(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._worker = None
-        self._build_ui()
-
-    def _build_ui(self):
-        main = QVBoxLayout(self)
-        main.setContentsMargins(16, 16, 16, 16)
-        main.setSpacing(12)
-
-        ctrl = QFrame()
-        ctrl.setObjectName('controlPanel')
-        cl = QVBoxLayout(ctrl)
-        cl.setContentsMargins(16, 14, 16, 14)
-        cl.setSpacing(10)
-
-        r1 = QHBoxLayout()
-        lbl1 = QLabel("游戏目录")
-        lbl1.setFixedWidth(65)
-        r1.addWidget(lbl1)
-        self.dir_input = QLineEdit()
-        self.dir_input.setPlaceholderText("选择包含 XCI 文件的目录...")
-        r1.addWidget(self.dir_input, 1)
-        db = QPushButton("浏览")
-        db.setFixedWidth(60)
-        db.clicked.connect(self._pick_dir)
-        r1.addWidget(db)
-        cl.addLayout(r1)
-
-        r2 = QHBoxLayout()
-        lbl2 = QLabel("prod.keys")
-        lbl2.setFixedWidth(65)
-        r2.addWidget(lbl2)
-        self.keys_input = QLineEdit()
-        self.keys_input.setPlaceholderText("选择 prod.keys 密钥文件...")
-        r2.addWidget(self.keys_input, 1)
-        kb = QPushButton("浏览")
-        kb.setFixedWidth(60)
-        kb.clicked.connect(self._pick_keys)
-        r2.addWidget(kb)
-        cl.addLayout(r2)
-
-        r3 = QHBoxLayout()
-        self.meta_check = QCheckBox("Pegasus")
-        self.meta_check.setChecked(True)
-        r3.addWidget(self.meta_check)
-        self.gamelist_check = QCheckBox("gamelist.xml")
-        r3.addWidget(self.gamelist_check)
-        r3.addStretch()
-        self.start_btn = QPushButton("开始提取")
-        self.start_btn.setObjectName('startBtn')
-        self.start_btn.clicked.connect(self._start_extract)
-        r3.addWidget(self.start_btn)
-        cl.addLayout(r3)
-
-        main.addWidget(ctrl)
-
-        hdr = QHBoxLayout()
-        sl = QLabel("游戏展柜")
-        sl.setStyleSheet('font-size: 16px; font-weight: bold; color: #e6edf3;')
-        hdr.addWidget(sl)
-        self.showcase_status = QLabel("加载游戏目录后显示")
-        self.showcase_status.setStyleSheet('color: #484f58; font-size: 12px;')
-        hdr.addWidget(self.showcase_status)
-        hdr.addStretch()
-        main.addLayout(hdr)
-
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.showcase_widget = QWidget()
-        self.showcase_widget.setStyleSheet('background: transparent;')
-        self.showcase_layout = FlowLayout(self.showcase_widget, spacing=16)
-        self.showcase_layout.setContentsMargins(4, 4, 4, 4)
-        self.scroll_area.setWidget(self.showcase_widget)
-        main.addWidget(self.scroll_area, 1)
-
-        self.log_toggle = QPushButton("▶ 日志")
-        self.log_toggle.setObjectName('logToggle')
-        self.log_toggle.clicked.connect(self._toggle_log)
-        main.addWidget(self.log_toggle)
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        self.log_text.setMaximumHeight(160)
-        self.log_text.setVisible(False)
-        main.addWidget(self.log_text)
-
-    def _toggle_log(self):
-        vis = not self.log_text.isVisible()
-        self.log_text.setVisible(vis)
-        self.log_toggle.setText(f"{'▼' if vis else '▶'} 日志")
-
-    def _pick_dir(self):
-        path = QFileDialog.getExistingDirectory(self, "选择游戏目录")
-        if path:
-            self.dir_input.setText(path)
-            self._on_dir_changed(path)
-
-    def _pick_keys(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "选择 prod.keys", "", "Keys files (*.keys);;All files (*.*)")
-        if path:
-            self.keys_input.setText(path)
-
-    def _on_dir_changed(self, directory):
-        base = Path(directory)
-        has_pegasus = (base / 'metadata.pegasus.txt').exists()
-        has_gamelist = (base / 'gamelist.xml').exists()
-        if has_pegasus or has_gamelist:
-            self.meta_check.setChecked(has_pegasus)
-            self.gamelist_check.setChecked(has_gamelist)
-        self._load_showcase(directory)
-
-    def _load_showcase(self, directory):
-        self.showcase_layout.clear()
-        games, has_pegasus, has_gamelist = load_showcase_games(directory)
-        if not games:
-            if not has_pegasus and not has_gamelist:
-                self.showcase_status.setText("未找到 metadata.pegasus.txt 或 gamelist.xml")
-            else:
-                self.showcase_status.setText("元数据文件中没有游戏条目")
-            return
-        sources = []
-        if has_pegasus:
-            sources.append('metadata.pegasus.txt')
-        if has_gamelist:
-            sources.append('gamelist.xml')
-        self.showcase_status.setText(
-            f"已加载 {len(games)} 款游戏 (来自 {', '.join(sources)})")
-        for game in games:
-            card = GameCard(game, self.showcase_widget)
-            card.clicked.connect(self._show_detail)
-            self.showcase_layout.addWidget(card)
-
-    def _show_detail(self, game):
-        GameDetailDialog(game, self).exec()
-
-    def _log(self, msg):
-        self.log_text.append(msg)
-        if not self.log_text.isVisible():
-            self.log_text.setVisible(True)
-            self.log_toggle.setText("▼ 日志")
-
-    def _start_extract(self):
-        if self._worker and self._worker.isRunning():
-            self._worker.cancel()
-            self.start_btn.setEnabled(False)
-            self.start_btn.setText("取消中...")
-            return
-        xci_dir = self.dir_input.text().strip()
-        keys_path = self.keys_input.text().strip()
-        if not xci_dir or not Path(xci_dir).is_dir():
-            QMessageBox.warning(self, "错误", "请选择有效的游戏目录")
-            return
-        if not keys_path or not Path(keys_path).is_file():
-            QMessageBox.warning(self, "错误", "请选择有效的 prod.keys 文件")
-            return
-        self.start_btn.setText("取消")
-        self.start_btn.setStyleSheet(
-            'background: #da3633; border: none; color: white; '
-            'font-weight: 600; padding: 10px 28px; font-size: 14px;')
-        self.log_text.clear()
-        mw = self.window()
-        g = mw.get_global_settings()
-        if g['proxy']:
-            set_proxy(g['proxy'])
-            self._log(f"已设置代理: {g['proxy']}")
-        params = dict(
-            xci_dir=xci_dir, keys_path=keys_path,
-            generate_meta=self.meta_check.isChecked(),
-            generate_gamelist=self.gamelist_check.isChecked(),
-            online_mode=g['online_mode'],
-            api_key=g['api_key'] or None,
-            datasource_name=g.get('datasource', 'thegamesdb'),
-            lang_code=g['lang_code'], google_lang=g['google_lang'],
-            translate=g['translate'],
-            video=g.get('video', False),
-            thread_count=g.get('thread_count', 4),
-        )
-        mw.save_config()
-        self._worker = ExtractWorker(params)
-        self._worker.log_signal.connect(self._log)
-        self._worker.finished_signal.connect(self._on_done)
-        self._worker.start()
-
-    def _on_done(self):
-        self.start_btn.setText("开始提取")
-        self.start_btn.setStyleSheet('')
-        self.start_btn.setEnabled(True)
-        QMessageBox.information(self, "完成", "处理完成，请查看日志输出")
-        xci_dir = self.dir_input.text().strip()
-        if xci_dir and Path(xci_dir).is_dir():
-            self._load_showcase(xci_dir)
-
-    def load_config(self, cfg):
-        if cfg.get('xci_dir'):
-            self.dir_input.setText(cfg['xci_dir'])
-        if cfg.get('keys_path'):
-            self.keys_input.setText(cfg['keys_path'])
-        if 'generate_meta' in cfg:
-            self.meta_check.setChecked(cfg['generate_meta'])
-        if 'generate_gamelist' in cfg:
-            self.gamelist_check.setChecked(cfg['generate_gamelist'])
-        xci_dir = cfg.get('xci_dir', '')
-        if xci_dir and Path(xci_dir).is_dir():
-            self._on_dir_changed(xci_dir)
-
-    def save_config(self):
-        return {
-            'xci_dir': self.dir_input.text().strip(),
-            'keys_path': self.keys_input.text().strip(),
-            'generate_meta': self.meta_check.isChecked(),
-            'generate_gamelist': self.gamelist_check.isChecked(),
         }

@@ -2,7 +2,7 @@
 """Wikipedia 数据源"""
 
 from urllib.parse import urlencode, quote
-from datasource import DataSource, register_datasource, _http_get_json
+from datasource_base import DataSource, register_datasource, _http_get_json
 
 
 def _wiki_request(lang, endpoint, params):

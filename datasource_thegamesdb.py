@@ -2,7 +2,7 @@
 """TheGamesDB 数据源"""
 
 from urllib.parse import urlencode
-from datasource import DataSource, register_datasource, _http_get_json, _http_get_bytes
+from datasource_base import DataSource, register_datasource, _http_get_json, _http_get_bytes
 
 
 TGDB_BASE = "https://api.thegamesdb.net/v1"
@@ -29,7 +29,7 @@ def fetch_publishers_map(api_key):
     return {int(k): v.get("name", "") for k, v in pubs.items()}
 
 
-def fetch_game_boxart(api_key, game_id):
+def fetch_game_boxart(api_key, game_id, log=print):
     params = {
         "apikey": api_key,
         "games_id": game_id,
@@ -37,17 +37,27 @@ def fetch_game_boxart(api_key, game_id):
     }
     data = _tgdb_request("Games/Images", params)
     if not data or "data" not in data:
+        log(f"  [DEBUG-boxart] API无返回或无data字段, game_id={game_id}")
         return None
-    base_url = data["data"].get("base_url", {}).get("original", "")
-    images = data["data"].get("images", {}).get(str(game_id), [])
+    base_url_map = data["data"].get("base_url", {})
+    base_url = (base_url_map.get("original") or base_url_map.get("large")
+                or base_url_map.get("medium") or base_url_map.get("thumb") or "")
+    images_dict = data["data"].get("images", {})
+    images = images_dict.get(str(game_id), [])
+    if not images:
+        log(f"  [DEBUG-boxart] images中无game_id={game_id}的条目, "
+            f"可用keys={list(images_dict.keys())[:5]}")
     for img in images:
         if img.get("type") == "boxart" and img.get("side") == "front":
             return base_url + img["filename"] if base_url else None
+    if images:
+        log(f"  [DEBUG-boxart] 有{len(images)}张图但无front boxart, "
+            f"types={[(i.get('type'),i.get('side')) for i in images[:5]]}")
     return None
 
 
 def fetch_game_metadata(title, api_key, genres_map, publishers_map, platform_id,
-                        include_boxart=False):
+                        include_boxart=False, log=print):
     params = {
         "apikey": api_key,
         "name": title,
@@ -56,13 +66,19 @@ def fetch_game_metadata(title, api_key, genres_map, publishers_map, platform_id,
     }
     data = _tgdb_request("Games/ByGameName", params)
     if not data or "data" not in data:
+        log(f"  [DEBUG-search] 搜索'{title}'无结果, platform_id={platform_id}")
         return None
     games = data["data"].get("games", [])
     if not games:
+        log(f"  [DEBUG-search] 搜索'{title}'返回空games列表")
         return None
     game = games[0]
     game_id = game.get("id")
+    log(f"  [DEBUG-search] 匹配到: id={game_id}, "
+        f"name='{game.get('game_title', '?')}'")
     result = {}
+    if game_id:
+        result["game_id"] = str(game_id)
     if game.get("overview"):
         result["description"] = game["overview"]
     if game.get("release_date"):
@@ -84,7 +100,7 @@ def fetch_game_metadata(title, api_key, genres_map, publishers_map, platform_id,
     if game.get("youtube"):
         result["youtube"] = game["youtube"]
     if include_boxart and game_id:
-        boxart_url = fetch_game_boxart(api_key, game_id)
+        boxart_url = fetch_game_boxart(api_key, game_id, log=log)
         if boxart_url:
             result["boxart_url"] = boxart_url
     return result if result else None
@@ -116,10 +132,12 @@ class TheGamesDBSource(DataSource):
     def fetch_metadata(self, title, platform_id=None, platform_name="", **kwargs):
         if not self._api_key:
             return None
+        log = kwargs.get('log', print)
         return fetch_game_metadata(
             title, self._api_key, self._genres_map,
             self._publishers_map, platform_id,
-            include_boxart=kwargs.get('include_boxart', False))
+            include_boxart=kwargs.get('include_boxart', False),
+            log=log)
 
 
 register_datasource(TheGamesDBSource())

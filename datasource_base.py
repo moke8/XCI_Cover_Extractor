@@ -97,3 +97,7 @@ try:
     import datasource_igdb
 except ImportError:
     pass
+try:
+    import datasource_screenscraper
+except ImportError:
+    pass
