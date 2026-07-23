@@ -784,7 +784,8 @@ def batch_scrape(
                 else:
                     log(f"[游戏搜索] 未找到匹配: {search_name}")
 
-            if translate and google_lang and google_lang.startswith('zh'):
+            if (translate and google_lang and google_lang.startswith('zh')
+                    and not filename_as_title):
                 if not _has_cjk(info['title']):
                     log(
                         f"[翻译] 开始翻译游戏标题: {info['title']} -> "

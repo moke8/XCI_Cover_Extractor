@@ -264,6 +264,46 @@ class ExistingMediaTests(unittest.TestCase):
 
 
 class BatchScrapeMediaTests(unittest.TestCase):
+    def test_filename_title_skips_title_translation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            rom_path = root / '口袋妖怪 魂银 493版.nds'
+            rom_path.write_bytes(b'rom')
+            messages = []
+
+            def extract_fn(*_args, **_kwargs):
+                return {
+                    'title': 'ポケットモンスター ソウルシルバー',
+                    'filename': rom_path.name,
+                    'game_code': 'IPGJ',
+                }
+
+            with patch('scrape.google_translate') as translate_mock:
+                batch_scrape(
+                    game_dir=root,
+                    extract_fn=extract_fn,
+                    file_extensions=('nds',),
+                    platform_id=8,
+                    platform_name='Nintendo DS',
+                    collection_defaults={},
+                    generate_meta=True,
+                    online_mode=False,
+                    google_lang='zh-CN',
+                    translate=True,
+                    filename_as_title=True,
+                    normalize_media_paths=False,
+                    thread_count=1,
+                    log=messages.append,
+                )
+
+            translate_mock.assert_not_called()
+            self.assertNotIn(
+                '[翻译] 开始翻译游戏标题', '\n'.join(messages))
+            self.assertIn(
+                'game: 口袋妖怪 魂银 493版',
+                (root / 'metadata.pegasus.txt').read_text(encoding='utf-8'),
+            )
+
     def test_complement_migrates_before_skipping_complete_game(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

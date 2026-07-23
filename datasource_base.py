@@ -44,7 +44,7 @@ def google_translate(text, google_lang_code):
         return text
     url = (
         "https://translate.googleapis.com/translate_a/single"
-        f"?client=gtx&sl=en&tl={google_lang_code}&dt=t"
+        f"?client=gtx&sl=auto&tl={google_lang_code}&dt=t"
         f"&q={quote(text[:4000])}"
     )
     try:
