@@ -409,6 +409,15 @@ class ScrapeSettingsDialog(QDialog):
         r2.addStretch()
         layout.addLayout(r2)
 
+        r_media = QHBoxLayout()
+        self.normalize_media_check = QCheckBox("强制保持图片目录统一")
+        r_media.addWidget(self.normalize_media_check)
+        r_media.addSpacing(16)
+        self.anbernic_compatible_check = QCheckBox("兼容 Anbernic 封面")
+        r_media.addWidget(self.anbernic_compatible_check)
+        r_media.addStretch()
+        layout.addLayout(r_media)
+
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
         sep.setStyleSheet('background: #30363d; max-height: 1px;')
@@ -489,6 +498,10 @@ class ScrapeSettingsDialog(QDialog):
         self.video_check.setChecked(s.get('video', False))
         self.translate_check.setChecked(s.get('translate', True))
         self.filename_as_title_check.setChecked(s.get('filename_as_title', False))
+        self.normalize_media_check.setChecked(
+            s.get('normalize_media_paths', True))
+        self.anbernic_compatible_check.setChecked(
+            s.get('anbernic_compatible', False))
         self.proxy_input.setText(s.get('proxy', ''))
         current_ds = s.get('datasource', 'thegamesdb')
         if s.get('api_key') and current_ds not in self._api_keys:
@@ -508,6 +521,8 @@ class ScrapeSettingsDialog(QDialog):
             'video': self.video_check.isChecked(),
             'translate': self.translate_check.isChecked(),
             'filename_as_title': self.filename_as_title_check.isChecked(),
+            'normalize_media_paths': self.normalize_media_check.isChecked(),
+            'anbernic_compatible': self.anbernic_compatible_check.isChecked(),
             'proxy': self.proxy_input.text().strip(),
             'api_key': self._api_keys.get(current_ds, ''),
             'datasource': current_ds,
@@ -804,6 +819,8 @@ class MainWindow(QMainWindow):
             'video': False,
             'translate': True,
             'filename_as_title': False,
+            'normalize_media_paths': True,
+            'anbernic_compatible': False,
             'proxy': '',
             'api_key': '',
             'datasource': 'thegamesdb',
@@ -859,6 +876,8 @@ class MainWindow(QMainWindow):
             'api_key': s.get('api_key', ''),
             'scrape_mode': s.get('scrape_mode', 'complement'),
             'filename_as_title': s.get('filename_as_title', False),
+            'normalize_media_paths': s.get('normalize_media_paths', True),
+            'anbernic_compatible': s.get('anbernic_compatible', False),
             'datasource': s.get('datasource', 'thegamesdb'),
         }
 
@@ -888,7 +907,9 @@ class MainWindow(QMainWindow):
         if 'thread_count' in cfg:
             self.thread_spin.setValue(cfg['thread_count'])
         scrape_keys = ('online_mode', 'scrape_mode', 'video', 'translate',
-                       'filename_as_title', 'proxy', 'api_key', 'datasource', 'api_keys')
+                       'filename_as_title', 'normalize_media_paths',
+                       'anbernic_compatible', 'proxy', 'api_key',
+                       'datasource', 'api_keys')
         for k in scrape_keys:
             if k in cfg:
                 self._scrape_settings[k] = cfg[k]

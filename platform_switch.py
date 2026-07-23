@@ -304,7 +304,7 @@ def extract_xci_info(xci_path, lang_code='en', log=print, *, keys=None):
     with open(xci_path, 'rb') as f:
         f.seek(0x100)
         if f.read(4) != b'HEAD':
-            log(f"  [跳过] 非有效 XCI 文件")
+            log("[游戏解析] 跳过非有效 XCI 文件")
             return None
 
         f.seek(0x130)
@@ -317,7 +317,7 @@ def extract_xci_info(xci_path, lang_code='en', log=print, *, keys=None):
                 secure_entry = entry
                 break
         if not secure_entry:
-            log(f"  [跳过] 未找到 secure 分区")
+            log("[游戏解析] XCI 中未找到 secure 分区")
             return None
 
         secure_hfs0 = HFS0(f, secure_entry['abs_offset'])
@@ -342,16 +342,16 @@ def extract_xci_info(xci_path, lang_code='en', log=print, *, keys=None):
                 continue
 
         if not control_nca_info:
-            log(f"  [跳过] 未找到 Control NCA (共扫描 {nca_count} 个 NCA)")
+            log(f"[游戏解析] 未找到 Control NCA，共扫描 {nca_count} 个 NCA")
             return None
 
         section_key = get_section_decrypt_key(control_nca_info, keys)
         if not section_key:
-            log(f"  [跳过] 缺少对应的 key_area_key")
+            log("[游戏解析] 缺少对应的 key_area_key")
             return None
 
         if not control_nca_info['sections']:
-            log(f"  [跳过] Control NCA 无有效 section")
+            log("[游戏解析] Control NCA 无有效 section")
             return None
 
         section = control_nca_info['sections'][0]
@@ -376,7 +376,7 @@ def extract_xci_info(xci_path, lang_code='en', log=print, *, keys=None):
         try:
             files = parse_romfs(romfs_data)
         except Exception as e:
-            log(f"  [跳过] RomFS 解析失败: {e}")
+            log(f"[游戏解析] RomFS 解析失败: {e}")
             return None
 
         icon_data = None
@@ -388,7 +388,7 @@ def extract_xci_info(xci_path, lang_code='en', log=print, *, keys=None):
                 break
 
         if not icon_data or len(icon_data) < 100:
-            log(f"  [跳过] 未找到图标文件")
+            log("[游戏解析] XCI 中未找到图标文件")
             return None
 
         meta = {'title': None, 'publisher': None}

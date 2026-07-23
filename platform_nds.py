@@ -109,7 +109,7 @@ def extract_nds_info(nds_path, lang_code='en', log=print):
         with open(nds_path, 'rb') as f:
             header = f.read(0x200)
             if len(header) < 0x200:
-                log(f"  [跳过] 文件头不完整")
+                log("[游戏解析] NDS 文件头不完整")
                 return None
 
             game_title = header[0x000:0x00C].decode(
@@ -119,13 +119,13 @@ def extract_nds_info(nds_path, lang_code='en', log=print):
 
             icon_offset = struct.unpack_from('<I', header, 0x068)[0]
             if icon_offset == 0:
-                log(f"  [跳过] 无图标数据")
+                log("[游戏解析] NDS ROM 无图标数据")
                 return None
 
             f.seek(icon_offset)
             icon_title_data = f.read(0x0840)
             if len(icon_title_data) < 0x0840:
-                log(f"  [跳过] 图标数据不完整")
+                log("[游戏解析] NDS 图标数据不完整")
                 return None
 
         bitmap_data = icon_title_data[0x0020:0x0020 + 512]
@@ -145,5 +145,5 @@ def extract_nds_info(nds_path, lang_code='en', log=print):
             'icon_data': icon_data,
         }
     except Exception as e:
-        log(f"  [失败] 解析错误: {e}")
+        log(f"[游戏解析] NDS 解析错误: {e}")
         return None

@@ -470,20 +470,20 @@ try:
             def _fill_rom_title():
                 game_dir = self.dir_input.text().strip()
                 if not game_dir:
-                    self._log("[手动搜索] 未设置游戏目录")
+                    self._log("[游戏搜索] 未设置游戏目录")
                     return
                 try:
                     game_files, temp_dir = collect_game_files(
                         game_dir, self.file_extensions)
                 except Exception as e:
-                    self._log(f"[手动搜索] 扫描目录失败: {e}")
+                    self._log(f"[文件扫描] 手动搜索扫描目录失败: {e}")
                     return
                 try:
                     found = False
                     for fpath, dname in game_files:
                         if dname == file_name:
                             found = True
-                            self._log(f"[手动搜索] 解析ROM: {dname}")
+                            self._log(f"[游戏解析] 手动搜索解析 ROM: {dname}")
                             info = self.extract_fn(
                                 str(fpath), lang_code='en',
                                 log=self._log,
@@ -492,16 +492,16 @@ try:
                                 t = info.get('title_en') or info.get('title', '')
                                 if t:
                                     line_edit.setText(t)
-                                    self._log(f"[手动搜索] 获取英文名: {t}")
+                                    self._log(f"[游戏解析] 已获取英文名: {t}")
                                 else:
-                                    self._log("[手动搜索] ROM中未找到英文名")
+                                    self._log("[游戏解析] ROM 中未找到英文名")
                             else:
-                                self._log("[手动搜索] ROM解析返回空")
+                                self._log("[游戏解析] ROM 解析返回空")
                             break
                     if not found:
-                        self._log(f"[手动搜索] 未在目录中找到文件: {file_name}")
+                        self._log(f"[文件扫描] 未在目录中找到文件: {file_name}")
                 except Exception as e:
-                    self._log(f"[手动搜索] 解析ROM异常: {e}")
+                    self._log(f"[游戏解析] 手动搜索解析 ROM 异常: {e}")
                 finally:
                     if temp_dir:
                         import shutil
@@ -536,7 +536,7 @@ try:
                 return
             mode_label = "补全" if scrape_mode == 'complement' else "刷新"
             self.log_text.clear()
-            self._log(f"[刮削-{mode_label}] 开始处理 {len(filenames)} 个游戏...")
+            self._log(f"[刮削] {mode_label}指定游戏: {len(filenames)} 个")
             mw = self.window()
             g = mw.get_global_settings()
             params = dict(
@@ -562,6 +562,8 @@ try:
                 target_files=set(filenames),
                 proxy=g.get('proxy', ''),
                 override_search_name=override_search_name,
+                normalize_media_paths=g.get('normalize_media_paths', True),
+                anbernic_compatible=g.get('anbernic_compatible', False),
             )
             mw.save_config()
             self.start_btn.setText("取消")
@@ -599,8 +601,6 @@ try:
             self.log_text.clear()
             mw = self.window()
             g = mw.get_global_settings()
-            if g['proxy']:
-                self._log(f"已设置代理: {g['proxy']}")
             params = dict(
                 game_dir=game_dir,
                 extract_fn=self.extract_fn,
@@ -622,6 +622,8 @@ try:
                 thread_count=g.get('thread_count', 4),
                 scrape_mode=g.get('scrape_mode', 'refresh'),
                 proxy=g.get('proxy', ''),
+                normalize_media_paths=g.get('normalize_media_paths', True),
+                anbernic_compatible=g.get('anbernic_compatible', False),
             )
             mw.save_config()
             from scrape import ExtractWorker

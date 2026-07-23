@@ -99,5 +99,5 @@ def extract_ngc_info(file_path, lang_code='en', log=print):
             'filename': p.name,
         }
     except Exception as e:
-        log(f"  [失败] 解析错误: {e}")
+        log(f"[游戏解析] GameCube 解析错误: {e}")
         return None

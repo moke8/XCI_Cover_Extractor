@@ -61,7 +61,7 @@ def extract_ps1_info(file_path, lang_code='en', log=print):
         else:
             return None
     except Exception as e:
-        log(f"  [失败] 解析错误: {e}")
+        log(f"[游戏解析] PS1 解析错误: {e}")
         return None
 
 
@@ -70,21 +70,21 @@ def _extract_from_pbp(file_path, log):
     with open(file_path, 'rb') as f:
         header = f.read(0x28)
         if len(header) < 0x28 or header[0:4] != b'\x00PBP':
-            log("  [跳过] 非有效 PBP 文件")
+            log("[游戏解析] 跳过非有效 PBP 文件")
             return None
         offsets = struct.unpack_from('<8I', header, 8)
         sfo_off = offsets[0]
         icon_off = offsets[1]
         sfo_size = icon_off - sfo_off
         if sfo_size <= 0:
-            log("  [跳过] 未找到 PARAM.SFO")
+            log("[游戏解析] PBP 中未找到 PARAM.SFO")
             return None
         f.seek(sfo_off)
         sfo_data = f.read(sfo_size)
 
     sfo = parse_param_sfo(sfo_data)
     if not sfo:
-        log("  [跳过] PARAM.SFO 解析失败")
+        log("[游戏解析] PARAM.SFO 解析失败")
         return None
 
     title = sfo.get('TITLE', '') or Path(file_path).stem
@@ -123,7 +123,7 @@ def _extract_from_chd(file_path, log):
     except ImportError:
         pass
     except Exception as e:
-        log(f"  [提示] CHD解析失败({e})，使用文件名")
+        log(f"[游戏解析] CHD 解析失败，回退文件名: {e}")
     clean_name = re.sub(r'\s*[\[\(][^\]\)]*[\]\)]', '', p.stem).strip()
     clean_name = re.sub(
         r'\s*(汉化版|中文版|日版|美版|欧版|繁体|简体)', '', clean_name).strip()

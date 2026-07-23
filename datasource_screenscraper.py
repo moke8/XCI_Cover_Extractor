@@ -224,11 +224,11 @@ class ScreenScraperSource(DataSource):
 
     def initialize(self, api_key=None, log=print):
         if not api_key or ':' not in api_key:
-            log("[提示] ScreenScraper 需要账号凭据，格式: 用户名:密码")
-            log("[提示] 请在 https://www.screenscraper.fr 注册免费账号")
+            log("[元数据补全] ScreenScraper 凭据无效，需要 用户名:密码")
+            log("[元数据补全] 注册地址: https://www.screenscraper.fr")
             return False
         self._ss_user, self._ss_password = api_key.split(':', 1)
-        log(f"ScreenScraper 已配置用户: {self._ss_user}")
+        log(f"[元数据补全] ScreenScraper 已配置用户: {self._ss_user}")
         return True
 
     def fetch_metadata(self, title, platform_id=None, platform_name="",

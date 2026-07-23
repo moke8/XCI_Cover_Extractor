@@ -52,7 +52,7 @@ def _extract_from_chd(file_path, log):
                 'filename': p.name,
             }
     except Exception as e:
-        log(f"  [CHD] 解析失败: {e}")
+        log(f"[游戏解析] Dreamcast CHD 解析失败，回退文件名: {e}")
     return _extract_from_filename(file_path, log)
 
 

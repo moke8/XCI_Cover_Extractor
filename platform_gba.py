@@ -40,7 +40,7 @@ def extract_gba_info(file_path, lang_code='en', log=print):
         with open(file_path, 'rb') as f:
             header = f.read(0xC0)
             if len(header) < 0xC0:
-                log(f"  [跳过] 文件头不完整")
+                log("[游戏解析] GBA 文件头不完整")
                 return None
 
             game_title = header[0x0A0:0x0AC].decode('ascii', errors='ignore').strip('\x00').strip()
@@ -49,7 +49,7 @@ def extract_gba_info(file_path, lang_code='en', log=print):
 
             fixed_val = header[0x0B2]
             if fixed_val != 0x96:
-                log(f"  [跳过] 不是有效的GBA ROM (固定字节校验失败)")
+                log("[游戏解析] 不是有效的 GBA ROM，固定字节校验失败")
                 return None
 
             db_name = GBA_GAME_DB.get(game_code)
@@ -71,5 +71,5 @@ def extract_gba_info(file_path, lang_code='en', log=print):
             'region': region,
         }
     except Exception as e:
-        log(f"  [失败] 解析错误: {e}")
+        log(f"[游戏解析] GBA 解析错误: {e}")
         return None

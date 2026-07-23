@@ -46,7 +46,7 @@ def extract_wii_info(file_path, lang_code='en', log=print):
             if suffix == '.wbfs':
                 magic = f.read(4)
                 if magic != b'WBFS':
-                    log(f"  [跳过] 非有效 WBFS 文件")
+                    log("[游戏解析] 跳过非有效 WBFS 文件")
                     return None
                 game_id, title = _read_disc_header(f, 0x200)
             elif suffix == '.iso':
@@ -92,5 +92,5 @@ def extract_wii_info(file_path, lang_code='en', log=print):
             'filename': p.name,
         }
     except Exception as e:
-        log(f"  [失败] 解析错误: {e}")
+        log(f"[游戏解析] Wii 解析错误: {e}")
         return None

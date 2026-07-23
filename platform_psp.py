@@ -184,7 +184,7 @@ def _extract_from_pbp(pbp_path, lang_code, log):
         with open(pbp_path, 'rb') as f:
             header = f.read(0x28)
             if len(header) < 0x28 or header[0:4] != b'\x00PBP':
-                log("  [跳过] 非有效 PBP 文件")
+                log("[游戏解析] 跳过非有效 PBP 文件")
                 return None
             offsets = struct.unpack_from('<8I', header, 8)
             sfo_off = offsets[0]
@@ -202,7 +202,7 @@ def _extract_from_pbp(pbp_path, lang_code, log):
                 icon_data = f.read(icon_size)
         return sfo_data, icon_data
     except Exception as e:
-        log(f"  [失败] PBP 解析错误: {e}")
+        log(f"[游戏解析] PBP 解析错误: {e}")
         return None
 
 
@@ -225,31 +225,31 @@ def extract_psp_info(psp_path, lang_code='en', log=print):
                 if sfo_data:
                     icon_data = _iso_read_file(f, 'PSP_GAME/ICON0.PNG')
         except Exception as e:
-            log(f"  [失败] ISO 读取错误: {e}")
+            log(f"[游戏解析] PSP ISO 读取错误: {e}")
             return None
     elif ext == '.cso':
         try:
             with open(psp_path, 'rb') as f:
                 reader = _make_cso_reader(f)
                 if not reader:
-                    log("  [跳过] 非有效 CSO 文件")
+                    log("[游戏解析] 跳过非有效 CSO 文件")
                     return None
                 sfo_data = _iso_read_file(reader, 'PSP_GAME/PARAM.SFO')
                 if sfo_data:
                     icon_data = _iso_read_file(reader, 'PSP_GAME/ICON0.PNG')
         except Exception as e:
-            log(f"  [失败] CSO 读取错误: {e}")
+            log(f"[游戏解析] PSP CSO 读取错误: {e}")
             return None
     else:
         return None
 
     if not sfo_data:
-        log("  [跳过] 未找到 PARAM.SFO")
+        log("[游戏解析] PSP 中未找到 PARAM.SFO")
         return None
 
     sfo = parse_param_sfo(sfo_data)
     if not sfo:
-        log("  [跳过] PARAM.SFO 解析失败")
+        log("[游戏解析] PSP PARAM.SFO 解析失败")
         return None
 
     title = sfo.get('TITLE', '') or Path(psp_path).stem

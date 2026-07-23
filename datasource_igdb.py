@@ -138,17 +138,17 @@ class IGDBSource(DataSource):
 
     def initialize(self, api_key=None, log=print):
         if not api_key or ':' not in api_key:
-            log("[错误] IGDB 需要 Twitch API 凭据，格式: client_id:client_secret")
+            log("[元数据补全] IGDB 凭据无效，需要 client_id:client_secret")
             return False
         client_id, client_secret = api_key.split(':', 1)
-        log("正在获取 IGDB/Twitch OAuth 令牌...")
+        log("[元数据补全] 正在获取 IGDB/Twitch OAuth 令牌")
         token = _igdb_get_token(client_id, client_secret)
         if not token:
-            log("[错误] 无法获取 Twitch OAuth 令牌，请检查凭据")
+            log("[元数据补全] Twitch OAuth 认证失败，请检查凭据")
             return False
         self._client_id = client_id
         self._token = token
-        log("  IGDB 认证成功")
+        log("[元数据补全] IGDB 认证成功")
         return True
 
     def fetch_metadata(self, title, platform_id=None, platform_name="", **kwargs):

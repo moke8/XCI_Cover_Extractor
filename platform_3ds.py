@@ -45,14 +45,14 @@ def extract_3ds_info(file_path, lang_code='en', log=print):
                 f.seek(0x100)
                 ncsd_magic = f.read(4)
                 if ncsd_magic != b'NCSD':
-                    log(f"  [跳过] 非有效 NCSD 文件")
+                    log("[游戏解析] 跳过非有效 NCSD 文件")
                     return None
                 f.seek(0x120)
                 part0_data = f.read(8)
                 part0_offset = struct.unpack('<I', part0_data[0:4])[0] * MEDIA_UNIT
                 product_code, title_id = _read_ncch_info(f, part0_offset)
                 if not product_code:
-                    log(f"  [跳过] 无法读取 NCCH header")
+                    log("[游戏解析] 无法读取 NCCH header")
                     return None
                 title = product_code
             elif suffix == '.cia':
@@ -91,5 +91,5 @@ def extract_3ds_info(file_path, lang_code='en', log=print):
             'filename': p.name,
         }
     except Exception as e:
-        log(f"  [失败] 解析错误: {e}")
+        log(f"[游戏解析] 3DS 解析错误: {e}")
         return None
